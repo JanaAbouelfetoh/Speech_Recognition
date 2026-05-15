@@ -1,28 +1,36 @@
+//#ifndef ADC_SAMPLER_H
+//#define ADC_SAMPLER_H
+//
+//#include <stdint.h>
+//#include "config.h"
+//
+//extern volatile uint16_t adc_idx;
+//extern volatile uint8_t  adc_recording;
+//extern volatile uint8_t  overflow_count;
+//
+//void    adc_init(void);
+//void    timer1_init(void);
+//void    adc_start_recording(void);
+//uint8_t adc_done(void);
+//void    adc_flush(void);
+//uint8_t adc_read_single(void);
+//
+//#endif
 #ifndef ADC_SAMPLER_H
 #define ADC_SAMPLER_H
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
 #include <stdint.h>
 #include "config.h"
 
-/* Recording status */
 extern volatile uint16_t adc_idx;
 extern volatile uint8_t  adc_recording;
+extern volatile uint8_t  overflow_count;
 
-/* Initialize ADC (8-bit, channel 0) */
-void adc_init(void);
-
-/* Initialize Timer1 for 8kHz sampling */
-void timer1_init(void);
-
-/* Start recording (writes directly to external SRAM) */
-void adc_start_recording(void);
-
-/* Returns 1 when BUF_SIZE samples recorded */
+void    adc_init(void);
+void    timer1_init(void);
+void    adc_start_recording(void);
 uint8_t adc_done(void);
-
-/* Single reading for debugging */
+void    adc_flush(void);
 uint8_t adc_read_single(void);
 
 #endif

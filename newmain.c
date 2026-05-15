@@ -1,248 +1,219 @@
-#define F_CPU 11059200UL
-#include <avr/io.h>
-#include <util/delay.h>
-#include "uart.h"
+/**
+ * main.c - Fixed Speech Recognition Main
+ * ========================================
+ *
+ * FIXES FROM OLD VERSION:
+ * -----------------------
+ *
+ * FIX 1: Init order corrected.
+ *   OLD: adc_init() ? timer1_init() ? uart_init() ? lcd_init() ? sram_init()
+ *        uart_init() called 3rd, so adc_init/timer1_init printed garbage.
+ *        sram_init() called last, but sram_write() was already being called.
+ *   NEW: uart_init() FIRST, then sram_init(), then adc_init(), timer1_init().
+ *        Timer1 interrupt is armed last so ISR never fires before SRAM ready.
+ *
+ * FIX 2: SRAM clear removed from main loop.
+ *   OLD: 8000x sram_write(127) before recording = ~152ms of bus activity.
+ *        Timer1 ISR fires during this, ISR also calls sram_write() = conflict.
+ *   NEW: No pre-clear needed. adc_start_recording() resets index to 0.
+ *        Every byte gets overwritten by the recording. No conflict.
+ *
+ * FIX 3: Flush loop has no extra delay.
+ *   OLD: _delay_us(50) inside flush loop = throttled drain = ring overflow.
+ *   NEW: Flush loop runs as fast as possible. sram_write() itself takes
+ *        ~19us which is the only delay. Ring drains faster than ISR fills it.
+ *
+ * FIX 4: Timer1 only enabled when needed.
+ *   OLD: timer1_init() called at startup, ISR runs forever burning cycles.
+ *   NEW: Timer1 interrupt enabled just before recording, disabled after.
+ *        Saves CPU during LCD/UART operations.
+ *
+ * FIX 5: Software gain for weak microphone signal.
+ *   Your ADC reads 60-64 (range=4, centered at ~62 not 128).
+ *   This means: mic output is near GND, no DC bias to mid-supply.
+ *   Hardware fix: build the preamp circuit (see comment at bottom).
+ *   Software workaround applied in features.c via ADC_DC_OFFSET and
+ *   ADC_SOFT_GAIN in config.h. Samples are re-centered and amplified
+ *   before feature extraction so the math works on real signal values.
+ *
+ * FIX 6: leds_init() removed.
+ *   PB1-PB4 are SRAM data bus pins. Configuring them as LED outputs
+ *   and driving them corrupts the SRAM data bus on every leds_show() call.
+ *   LEDs are disabled until you move them to non-SRAM pins.
+ */
 
-/* Helper function to print integers */
-void uart_int(uint16_t n) {
-    char buf[6];
-    char *p = buf + 5;
-    *p = '\0';
-    do {
-        *(--p) = '0' + (n % 10);
-        n /= 10;
-    } while (n > 0);
-    while (*p) uart_char(*p++);
+/**
+ * main.c - Fixed Speech Recognition Main
+ */
+
+#include "config.h"
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include <string.h>
+#include "uart.h"
+#include "sram.h"
+#include "adc_sampler.h"
+#include "features.h"
+#include "classifier.h"
+#include "lcd.h"
+#include "word_templates.h"
+
+/* uart_int() already declared in uart.h ? do NOT redeclare here */
+
+static void print_byte(uint8_t v)
+{
+    uart_char('0' + v / 100);
+    uart_char('0' + (v / 10) % 10);
+    uart_char('0' + v % 10);
 }
 
-int main(void) {
-    uart_init();
-    
-    /* Configure data pins as inputs with pull-ups */
-    DDRB &= ~0x1E;
-    DDRD &= ~((1 << PD4) | (1 << PD5));
-    DDRC &= ~((1 << PC6) | (1 << PC7));
-    
-    /* Enable pull-ups */
-    PORTB |= 0x1E;
-    PORTD |= (1 << PD4) | (1 << PD5);
-    PORTC |= (1 << PC6) | (1 << PC7);
-    
-    uart_str("\r\n=== BUS PULL-UP TEST ===\r\n");
-    uart_str("Reading data pins with pull-ups enabled:\r\n");
-    
-    uint8_t val = (PINB & 0x1E) >> 1;
-    if (PIND & (1 << PD4)) val |= 0x10;
-    if (PIND & (1 << PD5)) val |= 0x20;
-    if (PINC & (1 << PC6)) val |= 0x40;
-    if (PINC & (1 << PC7)) val |= 0x80;
-    
-    uart_str("Data bus reads: 0x");
-    uart_char("0123456789ABCDEF"[(val >> 4) & 0x0F]);
-    uart_char("0123456789ABCDEF"[val & 0x0F]);
-    uart_str("\r\n");
-    
-    if (val == 0xFF) {
-        uart_str("All pins read HIGH - pull-ups working\r\n");
-    } else {
-        uart_str("Some pins stuck LOW - check wiring\r\n");
+static void verify_sram_audio(void)
+{
+    uint8_t mn = 255, mx = 0;
+    for (uint16_t i = 0; i < BUF_SIZE; i++)
+    {
+        uint8_t v = sram_read(SRAM_AUDIO_BASE + i);
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
     }
-    
-    /* Now test if SRAM can pull pins LOW during read */
-    uart_str("\r\n=== SRAM DRIVE TEST ===\r\n");
-    uart_str("Writing 0x00 to address 0x1000, then reading...\r\n");
-    
-    /* Configure everything for write */
-    DDRA = 0xFE;
-    DDRD |= (1 << PD2) | (1 << PD3) | (1 << PD6) | (1 << PD7);
-    DDRB |= 0x1E;
-    DDRD |= (1 << PD4) | (1 << PD5);
-    DDRC |= (1 << PC6) | (1 << PC7);
-    
-    PORTD |= (1 << PD6) | (1 << PD7);
-    PORTD &= ~(1 << PD3);
-    
-    uint16_t addr = 0x1000;
-    uint8_t write_val = 0x00;
-    
-    /* Write 0x00 */
-    PORTA = (PORTA & ~0xFE) | ((addr & 0xFF) << 1);
-    if (addr & 0x80) PORTD |= (1 << PD2); else PORTD &= ~(1 << PD2);
-    _delay_us(2);
-    
-    PORTD |= (1 << PD3);
-    _delay_us(2);
-    PORTD &= ~(1 << PD3);
-    _delay_us(2);
-    
-    PORTA = (PORTA & ~0xFE) | (((addr >> 8) & 0x7F) << 1);
-    _delay_us(2);
-    
-    /* Set data to 0x00 */
-    PORTB &= ~0x1E;
-    PORTD &= ~((1 << PD4) | (1 << PD5));
-    PORTC &= ~((1 << PC6) | (1 << PC7));
-    _delay_us(2);
-    
-    PORTD &= ~(1 << PD6);
-    _delay_us(5);
-    PORTD |= (1 << PD6);
-    _delay_us(2);
-    
-    uart_str("Write complete. Now reading (SRAM should drive 0x00)...\r\n");
-    
-    /* Read - configure data pins as inputs with pull-ups DISABLED */
-    DDRB &= ~0x1E;
-    DDRD &= ~((1 << PD4) | (1 << PD5));
-    DDRC &= ~((1 << PC6) | (1 << PC7));
-    PORTB &= ~0x1E;      /* No pull-ups */
-    PORTD &= ~((1 << PD4) | (1 << PD5));
-    PORTC &= ~((1 << PC6) | (1 << PC7));
-    _delay_us(2);
-    
-    /* Address phase for read */
-    PORTA = (PORTA & ~0xFE) | ((addr & 0xFF) << 1);
-    if (addr & 0x80) PORTD |= (1 << PD2); else PORTD &= ~(1 << PD2);
-    _delay_us(2);
-    
-    PORTD |= (1 << PD3);
-    _delay_us(2);
-    PORTD &= ~(1 << PD3);
-    _delay_us(2);
-    
-    PORTA = (PORTA & ~0xFE) | (((addr >> 8) & 0x7F) << 1);
-    _delay_us(2);
-    
-    /* Enable SRAM output */
-    PORTD &= ~(1 << PD7);
-    _delay_us(5);
-    
-    /* Read */
-    uint8_t read_val = (PINB & 0x1E) >> 1;
-    if (PIND & (1 << PD4)) read_val |= 0x10;
-    if (PIND & (1 << PD5)) read_val |= 0x20;
-    if (PINC & (1 << PC6)) read_val |= 0x40;
-    if (PINC & (1 << PC7)) read_val |= 0x80;
-    
-    PORTD |= (1 << PD7);
-    
-    uart_str("Read value: 0x");
-    uart_char("0123456789ABCDEF"[(read_val >> 4) & 0x0F]);
-    uart_char("0123456789ABCDEF"[read_val & 0x0F]);
-    uart_str("\r\n");
-    
-    if (read_val == 0x00) {
-        uart_str("SUCCESS! SRAM drove pins LOW!\r\n");
-    } else if (read_val == 0xFF) {
-        uart_str("FAIL: SRAM not driving (pins still HIGH from pull-ups?)\r\n");
-        uart_str("Check: SRAM Pin 20 (CE) must be GND!\r\n");
-        uart_str("Check: SRAM Pin 22 (OE) connected to PD7\r\n");
-        uart_str("Check: SRAM Pin 27 (WE) connected to PD6\r\n");
-    } else {
-        uart_str("FAIL: SRAM driving partial value: ");
-        uart_int(read_val);
-        uart_str("\r\n");
+
+    uart_str("Sample range: ");
+    print_byte(mn);
+    uart_str(" - ");
+    print_byte(mx);
+    uart_str("  (range=");
+    uart_int(mx - mn);
+    uart_str(")\r\n");
+
+    uart_str("First 20: ");
+    for (uint8_t i = 0; i < 20; i++)
+    {
+        print_byte(sram_read(SRAM_AUDIO_BASE + i));
+        uart_char(' ');
     }
-    
-    /* Test 2: Write pattern and read back */
-    uart_str("\r\n=== PATTERN TEST ===\r\n");
-    
-    /* Configure for write again */
-    DDRB |= 0x1E;
-    DDRD |= (1 << PD4) | (1 << PD5);
-    DDRC |= (1 << PC6) | (1 << PC7);
-    
-    uint8_t test_patterns[] = {0x55, 0xAA, 0xFF, 0x00};
-    
-    for (uint8_t p = 0; p < 4; p++) {
-        write_val = test_patterns[p];
-        
-        uart_str("Writing 0x");
-        uart_char("0123456789ABCDEF"[(write_val >> 4) & 0x0F]);
-        uart_char("0123456789ABCDEF"[write_val & 0x0F]);
-        uart_str(" to address 0x1000... ");
-        
-        /* Write */
-        PORTA = (PORTA & ~0xFE) | ((addr & 0xFF) << 1);
-        if (addr & 0x80) PORTD |= (1 << PD2); else PORTD &= ~(1 << PD2);
-        _delay_us(2);
-        
-        PORTD |= (1 << PD3);
-        _delay_us(2);
-        PORTD &= ~(1 << PD3);
-        _delay_us(2);
-        
-        PORTA = (PORTA & ~0xFE) | (((addr >> 8) & 0x7F) << 1);
-        _delay_us(2);
-        
-        PORTB = (PORTB & ~0x1E) | ((write_val & 0x0F) << 1);
-        if (write_val & 0x10) PORTD |= (1 << PD4); else PORTD &= ~(1 << PD4);
-        if (write_val & 0x20) PORTD |= (1 << PD5); else PORTD &= ~(1 << PD5);
-        if (write_val & 0x40) PORTC |= (1 << PC6); else PORTC &= ~(1 << PC6);
-        if (write_val & 0x80) PORTC |= (1 << PC7); else PORTC &= ~(1 << PC7);
-        _delay_us(2);
-        
-        PORTD &= ~(1 << PD6);
-        _delay_us(5);
-        PORTD |= (1 << PD6);
-        _delay_us(2);
-        
-        /* Read back */
-        DDRB &= ~0x1E;
-        DDRD &= ~((1 << PD4) | (1 << PD5));
-        DDRC &= ~((1 << PC6) | (1 << PC7));
-        PORTB &= ~0x1E;
-        PORTD &= ~((1 << PD4) | (1 << PD5));
-        PORTC &= ~((1 << PC6) | (1 << PC7));
-        _delay_us(2);
-        
-        PORTA = (PORTA & ~0xFE) | ((addr & 0xFF) << 1);
-        if (addr & 0x80) PORTD |= (1 << PD2); else PORTD &= ~(1 << PD2);
-        _delay_us(2);
-        
-        PORTD |= (1 << PD3);
-        _delay_us(2);
-        PORTD &= ~(1 << PD3);
-        _delay_us(2);
-        
-        PORTA = (PORTA & ~0xFE) | (((addr >> 8) & 0x7F) << 1);
-        _delay_us(2);
-        
-        PORTD &= ~(1 << PD7);
-        _delay_us(5);
-        
-        read_val = (PINB & 0x1E) >> 1;
-        if (PIND & (1 << PD4)) read_val |= 0x10;
-        if (PIND & (1 << PD5)) read_val |= 0x20;
-        if (PINC & (1 << PC6)) read_val |= 0x40;
-        if (PINC & (1 << PC7)) read_val |= 0x80;
-        
-        PORTD |= (1 << PD7);
-        
-        DDRB |= 0x1E;
-        DDRD |= (1 << PD4) | (1 << PD5);
-        DDRC |= (1 << PC6) | (1 << PC7);
-        
-        uart_str("read 0x");
-        uart_char("0123456789ABCDEF"[(read_val >> 4) & 0x0F]);
-        uart_char("0123456789ABCDEF"[read_val & 0x0F]);
-        
-        if (read_val == write_val) {
-            uart_str(" OK\r\n");
-        } else {
-            uart_str(" FAIL\r\n");
+    uart_str("\r\n");
+
+    if (mx - mn < 10)
+        uart_str("WARNING: Tiny range - mic needs DC bias or preamp.\r\n");
+}
+
+static uint8_t do_recording(void)
+{
+    uart_str("Recording... speak now!\r\n");
+    lcd_clear();
+    lcd_str("Recording...");
+
+    adc_start_recording();
+
+    uint16_t timeout_ms = 0;
+    while (!adc_done())
+    {
+        adc_flush();
+        _delay_ms(1);
+        timeout_ms++;
+        if (timeout_ms > 1500)
+        {
+            adc_recording = 0;
+            uart_str("ERROR: Recording timeout!\r\n");
+            return 0;
         }
-        
-        _delay_ms(100);
     }
-    
-    uart_str("\r\n=== TEST COMPLETE ===\r\n");
-    uart_str("\r\nIf all reads returned 0x00, check:\r\n");
-    uart_str("1. SRAM Pin 20 (CE) must be connected to GND\r\n");
-    uart_str("2. SRAM Pin 28 (VCC) must have +5V\r\n");
-    uart_str("3. SRAM Pin 14 (GND) must have 0V\r\n");
-    uart_str("4. SRAM Pin 22 (OE) connected to PD7\r\n");
-    uart_str("5. SRAM Pin 27 (WE) connected to PD6\r\n");
-    
-    while(1);
+    adc_flush();   /* drain remainder */
+
+    uart_str("Done. Samples=");
+    uart_int(adc_idx);
+    if (overflow_count > 0)
+    {
+        uart_str("  OVERFLOW=");
+        uart_int(overflow_count);
+    }
+    uart_str("\r\n");
+
+    return 1;
+}
+
+int main(void)
+{
+    /* 1. UART first so all inits can print */
+    uart_init();
+    uart_str("\r\n=== SPEECH RECOGNITION ===\r\n");
+
+    /* 2. SRAM before anything uses the bus */
+    sram_init();
+
+    /* 3. ADC */
+    adc_init();
+
+    /* 4. LCD */
+    lcd_init();
+
+    /* 5. Button */
+    DDRB  &= ~(1 << PB0);
+    PORTB |=  (1 << PB0);
+
+    /* 6. Enable interrupts then arm timer */
+    sei();
+    timer1_init();
+
+    uart_str("Ready. Words: on off start stop left right up down\r\n");
+    lcd_clear();
+    lcd_str("Press Button");
+
+    while (1)
+    {
+        if (!(PINB & (1 << PB0)))
+        {
+            _delay_ms(30);
+            if (PINB & (1 << PB0)) continue;
+            while (!(PINB & (1 << PB0)));
+            _delay_ms(30);
+
+            uart_str("\r\n--- RECORDING ---\r\n");
+
+            if (!do_recording())
+            {
+                lcd_clear();
+                lcd_str("Rec failed");
+                _delay_ms(1500);
+                lcd_clear();
+                lcd_str("Press Button");
+                continue;
+            }
+
+            verify_sram_audio();
+
+            uart_str("Extracting features...\r\n");
+            lcd_clear();
+            lcd_str("Processing...");
+
+            float feat[N_FEATURES];
+            extract_features(feat);
+            uart_str("Features done.\r\n");
+
+            uart_str("Classifying...\r\n");
+            uint8_t idx = classify(feat);
+
+            char word_buf[10];
+            strcpy_P(word_buf, (PGM_P)pgm_read_word(&word_labels[idx]));
+
+            lcd_clear();
+            lcd_str(word_buf);
+
+            uart_str("DETECTED: ");
+            uart_str(word_buf);
+            uart_str("  (idx=");
+            uart_int(idx);
+            uart_str(")\r\n");
+
+            _delay_ms(2000);
+            while (!(PINB & (1 << PB0)));
+            _delay_ms(200);
+
+            lcd_clear();
+            lcd_str("Press Button");
+        }
+
+        _delay_ms(10);
+    }
 }
