@@ -51,17 +51,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=adc_sampler.c classifier.c features.c lcd.c newmain.c uart.c "../final project/final project/firmware2/word_templates.c" "../final project/final project/firmware2/sram.c"
+SOURCEFILES_QUOTED_IF_SPACED=adc_sampler.c classifier.c features.c lcd.c newmain.c uart.c "../final project/final project/firmware2/word_templates.c" "../final project/final project/firmware2/sram.c" audio_test_with_sram_main.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/adc_sampler.o ${OBJECTDIR}/classifier.o ${OBJECTDIR}/features.o ${OBJECTDIR}/lcd.o ${OBJECTDIR}/newmain.o ${OBJECTDIR}/uart.o ${OBJECTDIR}/_ext/188906888/word_templates.o ${OBJECTDIR}/_ext/188906888/sram.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/adc_sampler.o.d ${OBJECTDIR}/classifier.o.d ${OBJECTDIR}/features.o.d ${OBJECTDIR}/lcd.o.d ${OBJECTDIR}/newmain.o.d ${OBJECTDIR}/uart.o.d ${OBJECTDIR}/_ext/188906888/word_templates.o.d ${OBJECTDIR}/_ext/188906888/sram.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/adc_sampler.o ${OBJECTDIR}/classifier.o ${OBJECTDIR}/features.o ${OBJECTDIR}/lcd.o ${OBJECTDIR}/newmain.o ${OBJECTDIR}/uart.o ${OBJECTDIR}/_ext/188906888/word_templates.o ${OBJECTDIR}/_ext/188906888/sram.o ${OBJECTDIR}/audio_test_with_sram_main.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/adc_sampler.o.d ${OBJECTDIR}/classifier.o.d ${OBJECTDIR}/features.o.d ${OBJECTDIR}/lcd.o.d ${OBJECTDIR}/newmain.o.d ${OBJECTDIR}/uart.o.d ${OBJECTDIR}/_ext/188906888/word_templates.o.d ${OBJECTDIR}/_ext/188906888/sram.o.d ${OBJECTDIR}/audio_test_with_sram_main.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/adc_sampler.o ${OBJECTDIR}/classifier.o ${OBJECTDIR}/features.o ${OBJECTDIR}/lcd.o ${OBJECTDIR}/newmain.o ${OBJECTDIR}/uart.o ${OBJECTDIR}/_ext/188906888/word_templates.o ${OBJECTDIR}/_ext/188906888/sram.o
+OBJECTFILES=${OBJECTDIR}/adc_sampler.o ${OBJECTDIR}/classifier.o ${OBJECTDIR}/features.o ${OBJECTDIR}/lcd.o ${OBJECTDIR}/newmain.o ${OBJECTDIR}/uart.o ${OBJECTDIR}/_ext/188906888/word_templates.o ${OBJECTDIR}/_ext/188906888/sram.o ${OBJECTDIR}/audio_test_with_sram_main.o
 
 # Source Files
-SOURCEFILES=adc_sampler.c classifier.c features.c lcd.c newmain.c uart.c ../final project/final project/firmware2/word_templates.c ../final project/final project/firmware2/sram.c
+SOURCEFILES=adc_sampler.c classifier.c features.c lcd.c newmain.c uart.c ../final project/final project/firmware2/word_templates.c ../final project/final project/firmware2/sram.c audio_test_with_sram_main.c
 
 # Pack Options 
 PACK_COMPILER_OPTIONS=-I "${DFP_DIR}/include"
@@ -152,6 +152,12 @@ ${OBJECTDIR}/_ext/188906888/sram.o: ../final\ project/final\ project/firmware2/s
 	@${RM} ${OBJECTDIR}/_ext/188906888/sram.o 
 	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega32a ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -funsigned-char -funsigned-bitfields -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -MD -MP -MF "${OBJECTDIR}/_ext/188906888/sram.o.d" -MT "${OBJECTDIR}/_ext/188906888/sram.o.d" -MT ${OBJECTDIR}/_ext/188906888/sram.o  -o ${OBJECTDIR}/_ext/188906888/sram.o "../final project/final project/firmware2/sram.c"  -DXPRJ_default=$(CND_CONF)  $(COMPARISON_BUILD) 
 	
+${OBJECTDIR}/audio_test_with_sram_main.o: audio_test_with_sram_main.c  .generated_files/flags/default/9c65952e14f877f02828ec2946a1d29b62eac5ff .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/audio_test_with_sram_main.o.d 
+	@${RM} ${OBJECTDIR}/audio_test_with_sram_main.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega32a ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -funsigned-char -funsigned-bitfields -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -MD -MP -MF "${OBJECTDIR}/audio_test_with_sram_main.o.d" -MT "${OBJECTDIR}/audio_test_with_sram_main.o.d" -MT ${OBJECTDIR}/audio_test_with_sram_main.o  -o ${OBJECTDIR}/audio_test_with_sram_main.o audio_test_with_sram_main.c  -DXPRJ_default=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
 else
 ${OBJECTDIR}/adc_sampler.o: adc_sampler.c  .generated_files/flags/default/2b510bfb10e9c882b74e0c26507fc08ba7be0571 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
 	@${MKDIR} "${OBJECTDIR}" 
@@ -200,6 +206,12 @@ ${OBJECTDIR}/_ext/188906888/sram.o: ../final\ project/final\ project/firmware2/s
 	@${RM} ${OBJECTDIR}/_ext/188906888/sram.o.d 
 	@${RM} ${OBJECTDIR}/_ext/188906888/sram.o 
 	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega32a ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -funsigned-char -funsigned-bitfields -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -MD -MP -MF "${OBJECTDIR}/_ext/188906888/sram.o.d" -MT "${OBJECTDIR}/_ext/188906888/sram.o.d" -MT ${OBJECTDIR}/_ext/188906888/sram.o  -o ${OBJECTDIR}/_ext/188906888/sram.o "../final project/final project/firmware2/sram.c"  -DXPRJ_default=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/audio_test_with_sram_main.o: audio_test_with_sram_main.c  .generated_files/flags/default/973190d010720c9b6b0406abe8175da73945198e .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/audio_test_with_sram_main.o.d 
+	@${RM} ${OBJECTDIR}/audio_test_with_sram_main.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega32a ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -funsigned-char -funsigned-bitfields -O1 -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -MD -MP -MF "${OBJECTDIR}/audio_test_with_sram_main.o.d" -MT "${OBJECTDIR}/audio_test_with_sram_main.o.d" -MT ${OBJECTDIR}/audio_test_with_sram_main.o  -o ${OBJECTDIR}/audio_test_with_sram_main.o audio_test_with_sram_main.c  -DXPRJ_default=$(CND_CONF)  $(COMPARISON_BUILD) 
 	
 endif
 

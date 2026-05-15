@@ -350,8 +350,8 @@
  * Measure the average SRAM value during silence and set DC_OFFSET to it.
  * SOFT_GAIN amplifies deviations from that center.
  * Remove these (set offset=128, gain=1) once preamp is built.          */
-#define ADC_DC_OFFSET   62      /* measured center: your signal ? 62    */
-#define ADC_SOFT_GAIN    8      /* amplify deviations 8x                */
+#define ADC_DC_OFFSET   73      /* measured center: your signal ? 62    */
+#define ADC_SOFT_GAIN    1      /* amplify deviations 8x                */
 
 /* Convert raw ADC byte ? float [-1, 1] with software gain */
 static inline float adc_to_float(uint8_t raw)

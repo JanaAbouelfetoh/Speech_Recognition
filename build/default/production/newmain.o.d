@@ -1,5 +1,5 @@
 build/default/production/newmain.o.d build/default/production/newmain.o: \
- newmain.c config.h \
+ newmain.c \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/io.h \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/sfr_defs.h \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/inttypes.h \
@@ -14,12 +14,9 @@ build/default/production/newmain.o.d build/default/production/newmain.o: \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/interrupt.h \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/util/delay.h \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/util/delay_basic.h \
- C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/string.h \
- C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/lib/gcc/avr/15.1.0/include/stddef.h \
- uart.h sram.h adc_sampler.h features.h classifier.h lcd.h \
+ config.h uart.h sram.h adc_sampler.h lcd.h \
  C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/pgmspace.h \
- word_templates.h
-config.h:
+ C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/lib/gcc/avr/15.1.0/include/stddef.h
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/io.h:
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/sfr_defs.h:
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/inttypes.h:
@@ -34,13 +31,10 @@ C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-to
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/interrupt.h:
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/util/delay.h:
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/util/delay_basic.h:
-C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/string.h:
-C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/lib/gcc/avr/15.1.0/include/stddef.h:
+config.h:
 uart.h:
 sram.h:
 adc_sampler.h:
-features.h:
-classifier.h:
 lcd.h:
 C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/avr/include/avr/pgmspace.h:
-word_templates.h:
+C:/Users/Jana/Downloads/avr8-gnu-toolchain-4.0.0.52-win32.any.x86_64/avr8-gnu-toolchain-win32_x86_64/lib/gcc/avr/15.1.0/include/stddef.h:

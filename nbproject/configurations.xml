@@ -33,6 +33,7 @@
       <itemPath>uart.c</itemPath>
       <itemPath>../final project/final project/firmware2/word_templates.c</itemPath>
       <itemPath>../final project/final project/firmware2/sram.c</itemPath>
+      <itemPath>audio_test_with_sram_main.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
